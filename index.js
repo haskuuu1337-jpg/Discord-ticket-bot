@@ -37,13 +37,13 @@ function loadJson(filePath, fallback) {
 
     if (!fs.existsSync(filePath)) {
       fs.writeFileSync(filePath, JSON.stringify(fallback, null, 2), "utf8");
-      return structuredClone(fallback);
+      return JSON.parse(JSON.stringify(fallback));
     }
 
     return JSON.parse(fs.readFileSync(filePath, "utf8"));
   } catch (error) {
     console.error(`Błąd odczytu ${filePath}:`, error);
-    return structuredClone(fallback);
+    return JSON.parse(JSON.stringify(fallback));
   }
 }
 
@@ -86,7 +86,6 @@ let panelsDb = loadJson(PANELS_DB_PATH, {
 });
 let boostsDb = loadJson(BOOSTS_DB_PATH, { guilds: {} });
 
-// uzupełnienie brakujących pól w starszym configu
 config.welcomeChannelId ||= "1488268659049627698";
 config.invitesChannelId ||= "1488268907553886218";
 config.calculatorChannelId ||= "1488271189766963241";
@@ -317,9 +316,7 @@ function buildBoostEmbed(member, totalBoosts) {
 
   const embed = new EmbedBuilder()
     .setTitle("💜 Nowy boost serwera!")
-    .setDescription(
-      `${description}\n\n🚀 Łączna liczba boostów tej osoby: **${totalBoosts}**`
-    )
+    .setDescription(`${description}\n\n🚀 Łączna liczba boostów tej osoby: **${totalBoosts}**`)
     .setColor(0xFF73FA)
     .setTimestamp();
 
@@ -1101,5 +1098,8 @@ client.on(Events.InteractionCreate, async interaction => {
     }
   }
 });
+
+console.log("TOKEN START:", process.env.TOKEN?.slice(0, 10));
+console.log("TOKEN LEN:", process.env.TOKEN?.length);
 
 client.login(process.env.TOKEN);
