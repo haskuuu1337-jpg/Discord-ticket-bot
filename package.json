@@ -1,0 +1,17 @@
+{
+  "name": "discord-invite-currency-bot",
+  "version": "1.0.0",
+  "description": "Bot Discord: zaproszenia + kalkulator waluty + panel administratora",
+  "main": "index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.25.1",
+    "dotenv": "^16.6.1"
+  }
+}

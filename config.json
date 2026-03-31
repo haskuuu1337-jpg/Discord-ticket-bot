@@ -1,0 +1,22 @@
+{
+  "welcomeChannelId": "1488268659049627698",
+  "invitesChannelId": "1488268907553886218",
+  "calculatorChannelId": "1488271189766963241",
+  "fakeInviteHours": 24,
+  "defaultBannerUrl": "https://cdn.discordapp.com/attachments/1488575076919021758/1488616036340203671/image.png?ex=69cd6d38&is=69cc1bb8&hm=5ee04cd8377834d71a36e51251c80285be11e4f3e2732840407b00be60cd8fd3&",
+  "welcomeMessageTemplate": "{member} został zaproszony przez {inviter}, który posiada teraz **{netInvites}** zaproszenie(a)! 🎉",
+  "currency": {
+    "buyRateKPer1zl": 7,
+    "sellRateZlPer100k": 9,
+    "paymentMethods": {
+      "LTC": 0,
+      "PSC z paragonem": 15,
+      "PSC bez paragonu": 25,
+      "BLIK (przelew)": 0,
+      "Kod BLIK": 10,
+      "PayPal": 10
+    }
+  },
+  "boostChannelId": "1488269280142299246",
+  "boostMessageTemplate": "{member} właśnie zboostował serwer! Dziękujemy za wsparcie! 💜"
+}
