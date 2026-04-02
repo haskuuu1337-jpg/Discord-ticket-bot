@@ -170,10 +170,55 @@ function getMemberJoinKey(guildId, memberId) {
   return `${guildId}:${memberId}`;
 }
 
+function isDirectImageUrl(url) {
+  if (!url) return false;
+
+  return /^(https?:\/\/)(i\.imgur\.com|cdn\.discordapp\.com|media\.discordapp\.net|images-ext-1\.discordapp\.net).+\.(png|jpg|jpeg|webp|gif)(\?.*)?$/i.test(
+    url.trim()
+  );
+}
+
+function normalizeBannerUrl(raw) {
+  if (!raw) return "";
+
+  const url = raw.trim();
+
+  if (/^https?:\/\/imgur\.com\/a\//i.test(url)) {
+    return null;
+  }
+
+  const singleImgurMatch = url.match(/^https?:\/\/imgur\.com\/([a-zA-Z0-9]+)$/i);
+  if (singleImgurMatch) {
+    return `https://i.imgur.com/${singleImgurMatch[1]}.jpeg`;
+  }
+
+  return url;
+}
+
+function buildAdminPanelEmbed() {
+  const embed = new EmbedBuilder()
+    .setTitle("🛠️ Panel administratora")
+    .setDescription(
+      `Aktualne ustawienia:\n` +
+      `• Kupno: **1 zł = ${config.currency.buyRateKPer1zl}k**\n` +
+      `• Sprzedaż: **100k = ${config.currency.sellRateZlPer100k} zł**\n` +
+      `• Banner: ${config.defaultBannerUrl || "brak"}\n\n` +
+      `Wybierz, co chcesz zmienić:`
+    )
+    .setColor(0x8a2be2)
+    .setTimestamp();
+
+  if (isDirectImageUrl(config.defaultBannerUrl)) {
+    embed.setImage(config.defaultBannerUrl);
+  }
+
+  return embed;
+}
+
 function formatInviteStats(userTag, stats) {
   return new EmbedBuilder()
     .setTitle(`📨 Statystyki zaproszeń — ${userTag}`)
-    .setDescription("Twoje aktualne statystyki zaproszeń.")
+    .setDescription("Aktualne statystyki zaproszeń tego użytkownika.")
     .addFields(
       { name: "✅ Zaproszeni", value: String(stats.joined), inline: true },
       { name: "🚪 Opuścili serwer", value: String(stats.left), inline: true },
@@ -302,7 +347,7 @@ function buildWelcomeEmbed(member, inviter, stats) {
     .setColor(0x57F287)
     .setTimestamp();
 
-  if (config.defaultBannerUrl && /^https?:\/\//i.test(config.defaultBannerUrl)) {
+  if (isDirectImageUrl(config.defaultBannerUrl)) {
     embed.setImage(config.defaultBannerUrl);
   }
 
@@ -320,7 +365,7 @@ function buildBoostEmbed(member, totalBoosts) {
     .setColor(0xFF73FA)
     .setTimestamp();
 
-  if (config.defaultBannerUrl && /^https?:\/\//i.test(config.defaultBannerUrl)) {
+  if (isDirectImageUrl(config.defaultBannerUrl)) {
     embed.setImage(config.defaultBannerUrl);
   }
 
@@ -439,6 +484,13 @@ async function registerCommands() {
       .setDescription("Pokaż statystyki zaproszeń")
       .addUserOption(option =>
         option.setName("user").setDescription("Użytkownik do sprawdzenia").setRequired(false)
+      ),
+
+    new SlashCommandBuilder()
+      .setName("checkinvites")
+      .setDescription("Sprawdź ile zaproszeń ma wybrany gracz")
+      .addUserOption(option =>
+        option.setName("user").setDescription("Gracz do sprawdzenia").setRequired(true)
       ),
 
     new SlashCommandBuilder()
@@ -648,6 +700,15 @@ client.on(Events.InteractionCreate, async interaction => {
         });
       }
 
+      if (interaction.commandName === "checkinvites") {
+        const user = interaction.options.getUser("user");
+        const stats = ensureUserStats(interaction.guild.id, user.id);
+        return await interaction.reply({
+          embeds: [formatInviteStats(user.tag, stats)],
+          ephemeral: true
+        });
+      }
+
       if (interaction.commandName === "invitetop") {
         const guildStats = ensureGuildStats(interaction.guild.id);
         const ranking = Object.entries(guildStats.users)
@@ -829,13 +890,7 @@ client.on(Events.InteractionCreate, async interaction => {
         }
 
         return await interaction.reply({
-          content:
-            `🛠️ **Panel administratora**\n` +
-            `Aktualne ustawienia:\n` +
-            `• Kupno: 1 zł = **${config.currency.buyRateKPer1zl}k**\n` +
-            `• Sprzedaż: 100k = **${config.currency.sellRateZlPer100k} zł**\n` +
-            `• Banner: ${config.defaultBannerUrl || "brak"}\n\n` +
-            `Wybierz, co chcesz zmienić:`,
+          embeds: [buildAdminPanelEmbed()],
           components: adminPanelSelect(),
           ephemeral: true
         });
@@ -904,11 +959,30 @@ client.on(Events.InteractionCreate, async interaction => {
       }
 
       if (interaction.customId === "admin:set_banner") {
-        const value = interaction.fields.getTextInputValue("value").trim();
-        config.defaultBannerUrl = value;
+        const rawValue = interaction.fields.getTextInputValue("value").trim();
+        const normalizedValue = normalizeBannerUrl(rawValue);
+
+        if (normalizedValue === null) {
+          return await interaction.reply({
+            content:
+              "❌ Link do albumu Imgur nie działa jako banner.\nUżyj bezpośredniego linku do obrazka, np. `https://i.imgur.com/abc123.jpeg`",
+            ephemeral: true
+          });
+        }
+
+        if (!isDirectImageUrl(normalizedValue)) {
+          return await interaction.reply({
+            content:
+              "❌ To nie jest bezpośredni link do obrazka.\nPoprawny link musi wyglądać np. tak:\n`https://i.imgur.com/abc123.jpeg`",
+            ephemeral: true
+          });
+        }
+
+        config.defaultBannerUrl = normalizedValue;
         persistAll();
+
         return await interaction.reply({
-          content: "✅ Zmieniono banner powitania.",
+          content: `✅ Zmieniono banner powitania na:\n${normalizedValue}`,
           ephemeral: true
         });
       }
@@ -1027,7 +1101,7 @@ client.on(Events.InteractionCreate, async interaction => {
                   .setCustomId("value")
                   .setLabel("Bezpośredni URL do obrazka")
                   .setStyle(TextInputStyle.Short)
-                  .setPlaceholder("https://...")
+                  .setPlaceholder("https://i.imgur.com/xxxxx.jpeg")
                   .setRequired(true)
               )
             );
